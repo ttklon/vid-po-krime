@@ -1,0 +1,30 @@
+{
+  "original_name": "IMG_4693.MOV",
+  "size": 182213625,
+  "sha256": "b97e20eb6585cd51cfbdeec3458b4811aabc155ebd3c78399944211ff311831b",
+  "parts": [
+    {
+      "path": "media/4d09c476ec9d48f24755cce1cadd790ad20816939558b39f21083e1e4a03a918/part-00000",
+      "size": 50331648,
+      "sha256": "8e01744b34fe78e44e04203633c8e4320bf719908d8aabf29a692f51d135d29b"
+    },
+    {
+      "path": "media/4d09c476ec9d48f24755cce1cadd790ad20816939558b39f21083e1e4a03a918/part-00001",
+      "size": 50331648,
+      "sha256": "17fc4a6b65710c3581131ecd94e624693af8ab493d45e7b679386c37750f8542"
+    },
+    {
+      "path": "media/4d09c476ec9d48f24755cce1cadd790ad20816939558b39f21083e1e4a03a918/part-00002",
+      "size": 50331648,
+      "sha256": "524576aabe0e76bd1d4d7e5fdf89d184313b8c10a1262a30a302b8fbc388f1b2"
+    },
+    {
+      "path": "media/4d09c476ec9d48f24755cce1cadd790ad20816939558b39f21083e1e4a03a918/part-00003",
+      "size": 31218681,
+      "sha256": "d38dad22c511c76ef834b7961132ac1012cc4c7fb7a8ec269eba2e49fe083823"
+    }
+  ],
+  "repository": "ttklon/vid-po-krime",
+  "upload_id": "4d09c476ec9d48f24755cce1cadd790ad20816939558b39f21083e1e4a03a918",
+  "public_backup_confirmed": true
+}
