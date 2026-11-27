@@ -22,6 +22,10 @@ os.chmod(STORE, 0o700)
 STATE = STORE / 'state.json'
 CHUNK = 4 * 1024 * 1024
 MAX_FILE = 2 * 1024**3 - 1
+# Explicit opt-in for this temporary, public-media upload session.
+OPEN_ACCESS = os.environ.get('UPLOAD_OPEN_ACCESS') == '1'
+OPEN_MAX_FILES = 16
+OPEN_MAX_BYTES = 3 * 1024**3
 PART_SIZE = 48 * 1024**2
 BATCH_SIZE = 4
 LOCK = threading.RLock()
@@ -190,6 +194,8 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def authorized(self):
+        if OPEN_ACCESS:
+            return True
         supplied = self.headers.get('X-Upload-Token', '')
         valid = hmac.compare_digest(supplied, TOKEN) if supplied else hmac.compare_digest(
             self.headers.get('Authorization', ''), 'Bearer ' + TOKEN)
@@ -202,7 +208,10 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         route = urlsplit(self.path).path
         if route == '/':
-            self.reply(200, (ROOT / 'upload.html').read_bytes(), 'text/html; charset=utf-8')
+            page = (ROOT / 'upload.html').read_text().replace(
+                'const openAccess = false; // SERVER_OPEN_ACCESS',
+                'const openAccess = ' + str(OPEN_ACCESS).lower() + ';')
+            self.reply(200, page.encode(), 'text/html; charset=utf-8')
         elif route == '/api/files' and self.authorized():
             with LOCK:
                 self.reply(200, {'files': [public_file(f) for f in state['files'].values()],
@@ -270,6 +279,9 @@ class Handler(BaseHTTPRequestHandler):
                 if f['size'] != size or f['name'] != name:
                     raise ValueError('Идентификатор уже занят другим файлом.')
             else:
+                if OPEN_ACCESS and (len(state['files']) >= OPEN_MAX_FILES or
+                        sum(x['size'] for x in state['files'].values()) + size > OPEN_MAX_BYTES):
+                    raise ValueError('Лимит открытой загрузки: 16 файлов и 3 ГиБ суммарно.')
                 # Reserve space for unfinished uploads already admitted.
                 reserved = sum(x['size'] - x['offset'] for x in state['files'].values())
                 if shutil.disk_usage(STORE).free - 3 * reserved < 3 * size + 256 * 1024**2:
@@ -316,6 +328,6 @@ if __name__ == '__main__':
                 enqueue(fid)
         save()
     threading.Thread(target=worker, daemon=True).start()
-    print('Upload URL: /#' + TOKEN, flush=True)
+    print('Upload URL: ' + ('/ (OPEN ACCESS: max 16 files / 3 GiB)' if OPEN_ACCESS else '/#' + TOKEN), flush=True)
     print('Repository: ' + REPO + ' | branch: ' + BRANCH, flush=True)
     ThreadingHTTPServer(('0.0.0.0', int(os.environ.get('PORT', '8080'))), Handler).serve_forever()

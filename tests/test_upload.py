@@ -58,6 +58,29 @@ class UploadTests(unittest.TestCase):
         self.assertEqual(self.request('/api/init', {}, auth=False)[0], 401)
         self.assertNotIn('token', self.request('/api/files')[1])
 
+    def test_open_mode_upload_without_any_key(self):
+        with patch.object(self.m, 'OPEN_ACCESS', True):
+            self.assertEqual(self.request('/api/files', auth=False)[0], 200)
+            code, f = self.request('/api/init', {'id': self.fid, 'name': 'Крым.mp4', 'size': 6,
+                                   'public_backup_confirmed': True}, auth=False)
+            self.assertEqual(code, 200)
+            self.assertEqual(f['offset'], 0)
+            self.assertEqual(self.request('/api/chunk?id=' + self.fid + '&offset=0&sha256=' +
+                             hashlib.sha256(b'abcdef').hexdigest(), b'abcdef', raw=True, auth=False)[0], 200)
+            self.assertEqual(self.request('/api/finish', {'id': self.fid}, auth=False)[1]['status'], 'queued')
+
+    def test_open_mode_quota_allows_resume_but_not_more_files(self):
+        with patch.object(self.m, 'OPEN_ACCESS', True), patch.object(self.m, 'OPEN_MAX_FILES', 1):
+            self.assertEqual(self.init()[0], 200)
+            self.assertEqual(self.init()[0], 200)
+            self.assertEqual(self.request('/api/init', {'id': 'b' * 64, 'name': 'second.mp4', 'size': 1,
+                             'public_backup_confirmed': True}, auth=False)[0], 400)
+
+    def test_open_mode_size_quota(self):
+        with patch.object(self.m, 'OPEN_ACCESS', True), patch.object(self.m, 'OPEN_MAX_BYTES', 5):
+            self.assertEqual(self.init()[0], 400)
+            self.assertFalse(self.m.state['files'])
+
     def test_proxy_safe_upload_header(self):
         self.assertEqual(self.request('/api/files', headers={'X-Upload-Token': self.m.TOKEN})[0], 200)
         self.assertEqual(self.request('/api/files', headers={'X-Upload-Token': 'wrong'})[0], 401)

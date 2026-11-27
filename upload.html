@@ -10,9 +10,10 @@
 <section class="drop" id="drop"><div class="icon">↥</div><h2>Перетащите сюда ваши видео</h2><p>Можно выбрать все 11 сразу · суммарно 2 ГБ и больше</p><label class="button" for="picker">Выбрать видео</label><input id="picker" type="file" accept="video/*,.mkv,.mov,.mts,.m2ts,.avi,.webm" multiple><p class="small">Каждый файл — меньше 2 ГиБ. Страницу держите открытой до завершения приёма.</p></section>
 <div class="summary"><div class="stat"><b id="count">0</b><span class="small">файлов в списке</span></div><div class="stat"><b id="bytes">0 Б</b><span class="small">принято сервером</span></div><div class="stat"><b id="saved">0</b><span class="small">сохранено в GitHub</span></div></div>
 <div class="section"><h2>Ваши файлы</h2><button id="pause" class="secondary" disabled>Пауза отправки</button></div><div id="files"><p class="small">Пока ничего не загружено.</p></div>
-<footer id="repo"></footer><footer>При обрыве или перезагрузке выберите те же исходные файлы снова — передача продолжится с подтверждённой части. Не удаляйте оригиналы, пока каждый ролик не получит зелёный статус. Ключ доступа находится в адресе этой страницы: не передавайте ссылку посторонним. Видео станут общедоступными; удаление из последнего коммита не удалит их из истории Git.</footer>
+<footer id="repo"></footer><footer>При обрыве или перезагрузке выберите те же исходные файлы снова — передача продолжится с подтверждённой части. Не удаляйте оригиналы, пока каждый ролик не получит зелёный статус. Не передавайте ссылку посторонним: по ней можно загружать файлы. Видео станут общедоступными; удаление из последнего коммита не удалит их из истории Git.</footer>
 </main><script>
 'use strict';
+const openAccess = false; // SERVER_OPEN_ACCESS
 const storageKey='video-upload-access',chunkSize=4*1024*1024;
 function parseKey(value){
  const input=String(value||'').trim();
@@ -21,8 +22,8 @@ function parseKey(value){
 }
 let storedToken='';try{storedToken=localStorage.getItem(storageKey)||'';}catch{}
 let token=new URLSearchParams(location.search).get('key')||parseKey(location.hash)||storedToken;
-function rememberKey(){try{localStorage.setItem(storageKey,token);}catch{}}
-if(token){history.replaceState(null,'',location.pathname+'#'+encodeURIComponent(token));} // Remove credentials from query strings.
+function rememberKey(){if(openAccess)return;try{localStorage.setItem(storageKey,token);}catch{}}
+if(!openAccess&&token){history.replaceState(null,'',location.pathname+'#'+encodeURIComponent(token));} // Remove credentials from query strings.
 
 const remote=new Map(), local=new Map(), waiting=[];
 let running=0, paused=false, refreshing=false;
@@ -33,7 +34,7 @@ const labels={receiving:'Приём частями',queued:'Ожидает от�
 async function api(path,body,raw=false){
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),150000);
  try{
- const res=await fetch(path,{method:body===undefined?'GET':'POST',headers:{'X-Upload-Token':token,...(body===undefined?{}:{'Content-Type':raw?'application/octet-stream':'application/json'})},body:body===undefined?undefined:raw?body:JSON.stringify(body),signal:controller.signal});
+ const res=await fetch(path,{method:body===undefined?'GET':'POST',headers:{...(openAccess?{}:{'X-Upload-Token':token}),...(body===undefined?{}:{'Content-Type':raw?'application/octet-stream':'application/json'})},body:body===undefined?undefined:raw?body:JSON.stringify(body),signal:controller.signal});
  const obj=await res.json();if(!res.ok){const e=new Error(obj.error||'HTTP '+res.status);e.status=res.status;throw e;}return obj;
  }finally{clearTimeout(timer);}
 }
@@ -51,7 +52,7 @@ function draw(){
  $('pause').disabled=!running&&!waiting.length;
  $('pause').textContent=paused?'Продолжить отправку':'Пауза отправки';
 }
-async function refresh(){if(refreshing||!token)return;refreshing=true;try{const data=await api('/api/files');rememberKey();$('unlock').hidden=true;for(const f of data.files)remote.set(f.id,f);$('connection').textContent='Подключено. Можно загружать видео.';$('repo').textContent=`${data.repo} · ${data.branch} · свободно ${sizes(data.free)}`;draw();}catch(e){if(e.status===401){$('unlock').hidden=false;$('connection').textContent='Сервер работает, но ключ не подошёл. Вставьте ссылку или ключ ниже.';}else{$('connection').textContent='Нет связи с сервером: '+e.message;}}finally{refreshing=false;}}
+async function refresh(){if(refreshing||(!openAccess&&!token))return;refreshing=true;try{const data=await api('/api/files');rememberKey();$('unlock').hidden=true;for(const f of data.files)remote.set(f.id,f);$('connection').textContent='Подключено. Можно загружать видео.';$('repo').textContent=`${data.repo} · ${data.branch} · свободно ${sizes(data.free)}`;draw();}catch(e){if(e.status===401){$('unlock').hidden=false;$('connection').textContent='Сервер работает, но ключ не подошёл. Вставьте ссылку или ключ ниже.';}else{$('connection').textContent='Нет связи с сервером: '+e.message;}}finally{refreshing=false;}}
 async function sha(data){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',data))].map(x=>x.toString(16).padStart(2,'0')).join('');}
 async function identity(file){const first=await file.slice(0,chunkSize).arrayBuffer(),last=await file.slice(Math.max(0,file.size-chunkSize)).arrayBuffer();const meta=new TextEncoder().encode(JSON.stringify([file.name,file.size,file.lastModified]));return sha(await new Blob([meta,first,last]).arrayBuffer());}
 async function choose(files){
@@ -95,6 +96,11 @@ $('pause').onclick=()=>{paused=!paused;if(!paused)pump();draw();};
 $('files').onclick=async e=>{const id=e.target.dataset.retry;if(!id)return;try{remote.set(id,await api('/api/retry',{id}));draw();}catch(err){$('connection').textContent=err.message;}};
 window.addEventListener('beforeunload',e=>{if(running||waiting.length){e.preventDefault();e.returnValue='';}});
 $('unlock').onsubmit=e=>{e.preventDefault();token=parseKey($('access-key').value);if(!token)return;history.replaceState(null,'',location.pathname+'#'+encodeURIComponent(token));$('access-key').value='';refresh();};
-if(!token){$('unlock').hidden=false;$('connection').textContent='Сервер доступен. Вставьте ссылку с ключом из чата для подключения.';}else{refresh();}
+if(!openAccess&&!token){$('unlock').hidden=false;$('connection').textContent='Сервер доступен. Вставьте ссылку с ключом из чата для подключения.';}else{refresh();}
+if(openAccess){
+ history.replaceState(null,'',location.pathname+'?v=3');
+ $('unlock').hidden=true;
+ const warning=document.createElement('p');warning.className='small';warning.textContent='Временная открытая загрузка: без ключей и паролей. До 16 файлов, до 3 ГиБ суммарно. Любой, у кого есть ссылка, может загружать файлы.';$('drop').prepend(warning);
+}
 setInterval(refresh,3000);
 </script></body></html>
