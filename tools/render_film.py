@@ -295,7 +295,11 @@ class Handler(BaseHTTPRequestHandler):
             self.response((ROOT / 'edit/progress.html').read_bytes(), 'text/html; charset=utf-8')
         elif route == '/status':
             with GUARD:
-                body = json.dumps(PROGRESS, ensure_ascii=False).encode()
+                payload = dict(PROGRESS)
+            revision = ROOT / 'edit/revision.json'
+            if revision.exists():
+                payload['revision_notice'] = json.loads(revision.read_text())['message']
+            body = json.dumps(payload, ensure_ascii=False).encode()
             self.response(body, 'application/json; charset=utf-8')
         elif route == '/edit-plan.json':
             self.response(json.dumps(PLAN, ensure_ascii=False, indent=2).encode(), 'application/json; charset=utf-8')
@@ -351,6 +355,12 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == '__main__':
-    threading.Thread(target=render, daemon=True).start()
+    if os.environ.get('FILM_SERVE_ONLY') == '1':
+        if (WORK / 'status.json').exists():
+            PROGRESS.update(json.loads((WORK / 'status.json').read_text()))
+    elif (ROOT / 'edit/revision.json').exists():
+        update(phase='revision_needed', message='Требуется вечерний дубль. Повторный экспорт не запущен.')
+    else:
+        threading.Thread(target=render, daemon=True).start()
     print('Educational film preview: port ' + os.environ.get('FILM_PORT', '8081'), flush=True)
     ThreadingHTTPServer(('0.0.0.0', int(os.environ.get('FILM_PORT', '8081'))), Handler).serve_forever()

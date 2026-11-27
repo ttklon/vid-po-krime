@@ -100,7 +100,7 @@ if(!openAccess&&!token){$('unlock').hidden=false;$('connection').textContent='С
 if(openAccess){
  history.replaceState(null,'',location.pathname+'?v=3');
  $('unlock').hidden=true;
- const warning=document.createElement('p');warning.className='small';warning.textContent='Временная открытая загрузка: без ключей и паролей. До 16 файлов, до 3 ГиБ суммарно. Любой, у кого есть ссылка, может загружать файлы.';$('drop').prepend(warning);
+ const warning=document.createElement('p');warning.className='small';warning.textContent='Временная открытая загрузка: без ключей и паролей. До 16 файлов, до 5 ГиБ суммарно. Любой, у кого есть ссылка, может загружать файлы.';$('drop').prepend(warning);
 }
 setInterval(refresh,3000);
 </script></body></html>
