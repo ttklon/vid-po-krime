@@ -4,15 +4,26 @@
 :root{font-family:Inter,system-ui,sans-serif;color:#eaf3fa;background:#0b131b;color-scheme:dark}*{box-sizing:border-box}body{margin:0}main{max-width:1060px;margin:auto;padding:48px 24px}header{display:flex;justify-content:space-between;gap:20px;align-items:center}.eyebrow{color:#62d7bb;font-size:12px;letter-spacing:2px;text-transform:uppercase}h1{font-size:clamp(30px,5vw,48px);letter-spacing:-1.6px;margin:12px 0}p{color:#a3b4c3;line-height:1.6}.badge{border:1px solid #2e4b46;border-radius:30px;color:#7de3c6;padding:9px 15px;font-size:12px;white-space:nowrap}.notice{background:#16222e;border:1px solid #2c3e4f;padding:16px 20px;border-radius:12px;font-size:14px;margin:28px 0;line-height:1.65;color:#b9c9d7}.notice strong{color:#e7eff6}.drop{padding:38px 20px;text-align:center;border:1px dashed #476779;border-radius:16px;background:#101f29;transition:.2s}.drop.over{border-color:#64e0bd;background:#173c39}.icon{font-size:36px;color:#78e3c5}.drop h2{font-size:21px;margin:14px 0 4px}button,.button{border:0;background:#7be1c5;color:#09251e;font:600 14px system-ui;padding:12px 20px;border-radius:8px;cursor:pointer;display:inline-block}button:hover,.button:hover{filter:brightness(1.1)}button.secondary{background:#253644;color:#d6e3ee;margin-left:8px}button:disabled{opacity:.45;cursor:default}.small{font-size:12px;color:#8fa5b5}.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:24px 0}.stat{background:#121f2a;border:1px solid #243441;padding:18px;border-radius:12px}.stat b{display:block;font-size:24px;margin-bottom:4px}.section{display:flex;justify-content:space-between;align-items:center;margin-top:30px}h2{font-size:18px}.file{background:#121f2a;border:1px solid #263947;border-radius:12px;padding:18px;margin:12px 0}.row{display:flex;align-items:center;justify-content:space-between;gap:16px}.filename{font-weight:600;overflow-wrap:anywhere}.status{font-size:12px;color:#9cb9cf;text-align:right;flex-shrink:0}.saved{color:#7be1c5}.error{color:#ffb292}.track{height:5px;background:#243643;border-radius:10px;margin:14px 0 9px;overflow:hidden}.bar{height:100%;background:#6fdcbe;transition:width .2s}.details{font-size:12px;line-height:1.5;color:#8da6b9;overflow-wrap:anywhere}.errorbox{color:#ffb292;white-space:pre-wrap;margin-top:12px;font-size:12px;overflow-wrap:anywhere}a{color:#7cdec7}footer{font-size:12px;color:#708b9e;margin-top:32px;line-height:1.8}#connection{font-size:13px;color:#f4bc84;min-height:20px}input[type=file]{position:absolute;left:-10000px}@media(max-width:600px){main{padding:26px 16px}header{display:block}.badge{display:inline-block;margin-top:10px}.summary{gap:8px}.stat{padding:12px}.stat b{font-size:20px}.row{align-items:flex-start}.status{max-width:120px;white-space:normal}.notice{font-size:13px}}
 </style></head><body><main>
 <header><div><div class="eyebrow">Крым / Медиатека</div><h1>Видео — в сохранности.</h1><p>Загрузите все ролики. Мы примем их частями<br>и по одному сохраним в GitHub.</p></div><span class="badge">● SHA-256 · проверка каждой части</span></header>
-<div class="notice"><strong>Внимание: видео будут общедоступны.</strong> Репозиторий GitHub публичный. После приёма каждого ролика сервер сохранит его в коммитах частями по 48 МиБ — без потери качества. Зелёный статус появится только после успешного push всех частей и манифеста. Для сборки исходного видео предусмотрена команда.<br><label style="display:block;margin-top:12px;color:#f5cf9b"><input type="checkbox" id="consent"> Я согласен на публикацию этих видео в публичном репозитории GitHub.</label></div>
+<div class="notice"><strong>Внимание: видео будут общедоступны.</strong> Репозиторий GitHub публичный. После приёма каждого ролика сервер сохранит его в коммитах частями по 48 МиБ — без потери качества. Зелёный статус появится только после успешного push всех частей и манифеста. Для сборки исходного видео предусмотрена команда.<br><label style="display:block;margin-top:12px;color:#f5cf9b"><input type="checkbox" id="consent" checked> Я согласен на публикацию этих видео в публичном репозитории GitHub.</label></div>
 <div id="connection" role="status"></div>
+<form id="unlock" class="notice" hidden><strong>Нужен ключ загрузчика, а не разрешение на распространение.</strong><p>Вставьте полную ссылку из чата или только ключ доступа. Он будет сохранён в этом браузере.</p><input id="access-key" type="password" autocomplete="off" placeholder="Ссылка или ключ доступа" aria-label="Ссылка или ключ доступа" style="padding:12px;max-width:100%;width:420px;margin:0 8px 12px 0"><button type="submit">Подключиться</button></form>
 <section class="drop" id="drop"><div class="icon">↥</div><h2>Перетащите сюда ваши видео</h2><p>Можно выбрать все 11 сразу · суммарно 2 ГБ и больше</p><label class="button" for="picker">Выбрать видео</label><input id="picker" type="file" accept="video/*,.mkv,.mov,.mts,.m2ts,.avi,.webm" multiple><p class="small">Каждый файл — меньше 2 ГиБ. Страницу держите открытой до завершения приёма.</p></section>
 <div class="summary"><div class="stat"><b id="count">0</b><span class="small">файлов в списке</span></div><div class="stat"><b id="bytes">0 Б</b><span class="small">принято сервером</span></div><div class="stat"><b id="saved">0</b><span class="small">сохранено в GitHub</span></div></div>
 <div class="section"><h2>Ваши файлы</h2><button id="pause" class="secondary" disabled>Пауза отправки</button></div><div id="files"><p class="small">Пока ничего не загружено.</p></div>
 <footer id="repo"></footer><footer>При обрыве или перезагрузке выберите те же исходные файлы снова — передача продолжится с подтверждённой части. Не удаляйте оригиналы, пока каждый ролик не получит зелёный статус. Ключ доступа находится в адресе этой страницы: не передавайте ссылку посторонним. Видео станут общедоступными; удаление из последнего коммита не удалит их из истории Git.</footer>
 </main><script>
 'use strict';
-const token=location.hash.slice(1), chunkSize=4*1024*1024;
+const storageKey='video-upload-access',chunkSize=4*1024*1024;
+function parseKey(value){
+ const input=String(value||'').trim();
+ try{const url=new URL(input);return url.searchParams.get('key')||decodeURIComponent(url.hash.slice(1));}catch{}
+ return input.replace(/^#/, '');
+}
+let storedToken='';try{storedToken=localStorage.getItem(storageKey)||'';}catch{}
+let token=new URLSearchParams(location.search).get('key')||parseKey(location.hash)||storedToken;
+function rememberKey(){try{localStorage.setItem(storageKey,token);}catch{}}
+if(token){history.replaceState(null,'',location.pathname+'#'+encodeURIComponent(token));} // Remove credentials from query strings.
+
 const remote=new Map(), local=new Map(), waiting=[];
 let running=0, paused=false, refreshing=false;
 const $=id=>document.getElementById(id);
@@ -22,7 +33,7 @@ const labels={receiving:'Приём частями',queued:'Ожидает от�
 async function api(path,body,raw=false){
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),150000);
  try{
- const res=await fetch(path,{method:body===undefined?'GET':'POST',headers:{Authorization:'Bearer '+token,...(body===undefined?{}:{'Content-Type':raw?'application/octet-stream':'application/json'})},body:body===undefined?undefined:raw?body:JSON.stringify(body),signal:controller.signal});
+ const res=await fetch(path,{method:body===undefined?'GET':'POST',headers:{'X-Upload-Token':token,...(body===undefined?{}:{'Content-Type':raw?'application/octet-stream':'application/json'})},body:body===undefined?undefined:raw?body:JSON.stringify(body),signal:controller.signal});
  const obj=await res.json();if(!res.ok){const e=new Error(obj.error||'HTTP '+res.status);e.status=res.status;throw e;}return obj;
  }finally{clearTimeout(timer);}
 }
@@ -40,7 +51,7 @@ function draw(){
  $('pause').disabled=!running&&!waiting.length;
  $('pause').textContent=paused?'Продолжить отправку':'Пауза отправки';
 }
-async function refresh(){if(refreshing)return;refreshing=true;try{const data=await api('/api/files');for(const f of data.files)remote.set(f.id,f);$('connection').textContent='';$('repo').textContent=`${data.repo} · ${data.branch} · свободно ${sizes(data.free)}`;draw();}catch(e){$('connection').textContent='Нет связи с сервером: '+e.message;}finally{refreshing=false;}}
+async function refresh(){if(refreshing||!token)return;refreshing=true;try{const data=await api('/api/files');rememberKey();$('unlock').hidden=true;for(const f of data.files)remote.set(f.id,f);$('connection').textContent='Подключено. Можно загружать видео.';$('repo').textContent=`${data.repo} · ${data.branch} · свободно ${sizes(data.free)}`;draw();}catch(e){if(e.status===401){$('unlock').hidden=false;$('connection').textContent='Сервер работает, но ключ не подошёл. Вставьте ссылку или ключ ниже.';}else{$('connection').textContent='Нет связи с сервером: '+e.message;}}finally{refreshing=false;}}
 async function sha(data){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',data))].map(x=>x.toString(16).padStart(2,'0')).join('');}
 async function identity(file){const first=await file.slice(0,chunkSize).arrayBuffer(),last=await file.slice(Math.max(0,file.size-chunkSize)).arrayBuffer();const meta=new TextEncoder().encode(JSON.stringify([file.name,file.size,file.lastModified]));return sha(await new Blob([meta,first,last]).arrayBuffer());}
 async function choose(files){
@@ -83,5 +94,7 @@ const drop=$('drop');for(const event of ['dragenter','dragover'])drop.addEventLi
 $('pause').onclick=()=>{paused=!paused;if(!paused)pump();draw();};
 $('files').onclick=async e=>{const id=e.target.dataset.retry;if(!id)return;try{remote.set(id,await api('/api/retry',{id}));draw();}catch(err){$('connection').textContent=err.message;}};
 window.addEventListener('beforeunload',e=>{if(running||waiting.length){e.preventDefault();e.returnValue='';}});
-if(!token)$('connection').textContent='Откройте полную ссылку с ключом доступа, которую выдал агент.';else{refresh();setInterval(refresh,3000);}
+$('unlock').onsubmit=e=>{e.preventDefault();token=parseKey($('access-key').value);if(!token)return;history.replaceState(null,'',location.pathname+'#'+encodeURIComponent(token));$('access-key').value='';refresh();};
+if(!token){$('unlock').hidden=false;$('connection').textContent='Сервер доступен. Вставьте ссылку с ключом из чата для подключения.';}else{refresh();}
+setInterval(refresh,3000);
 </script></body></html>

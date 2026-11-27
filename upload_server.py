@@ -190,7 +190,10 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def authorized(self):
-        if not hmac.compare_digest(self.headers.get('Authorization', ''), 'Bearer ' + TOKEN):
+        supplied = self.headers.get('X-Upload-Token', '')
+        valid = hmac.compare_digest(supplied, TOKEN) if supplied else hmac.compare_digest(
+            self.headers.get('Authorization', ''), 'Bearer ' + TOKEN)
+        if not valid:
             self.close_connection = True
             self.reply(401, {'error': 'Нужна ссылка с ключом доступа.'})
             return False

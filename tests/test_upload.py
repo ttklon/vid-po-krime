@@ -35,9 +35,9 @@ class UploadTests(unittest.TestCase):
         self.thread.join()
         self.tmp.cleanup()
 
-    def request(self, path, body=None, auth=True, raw=False):
+    def request(self, path, body=None, auth=True, raw=False, headers=None):
         conn = http.client.HTTPConnection(*self.server.server_address, timeout=10)
-        headers = {'Authorization': 'Bearer ' + self.m.TOKEN} if auth else {}
+        headers = headers if headers is not None else ({'Authorization': 'Bearer ' + self.m.TOKEN} if auth else {})
         if body is not None and not raw:
             body = json.dumps(body).encode()
         conn.request('GET' if body is None else 'POST', path, body, headers)
@@ -57,6 +57,12 @@ class UploadTests(unittest.TestCase):
         self.assertEqual(self.request('/api/files', auth=False)[0], 401)
         self.assertEqual(self.request('/api/init', {}, auth=False)[0], 401)
         self.assertNotIn('token', self.request('/api/files')[1])
+
+    def test_proxy_safe_upload_header(self):
+        self.assertEqual(self.request('/api/files', headers={'X-Upload-Token': self.m.TOKEN})[0], 200)
+        self.assertEqual(self.request('/api/files', headers={'X-Upload-Token': 'wrong'})[0], 401)
+        self.assertEqual(self.request('/api/files', headers={'X-Upload-Token': self.m.TOKEN,
+                         'Authorization': 'Bearer proxy-credential'})[0], 200)
 
     def test_chunks_resume_hash_and_finish(self):
         self.assertEqual(self.init()[0], 200)
