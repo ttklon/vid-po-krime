@@ -1,0 +1,20 @@
+{
+  "original_name": "IMG_4685.MOV",
+  "size": 87021546,
+  "sha256": "6e46dddcf695c1fad0a7c659730e2c2c31cbf13c586c7bfac6dce55eda280492",
+  "parts": [
+    {
+      "path": "media/c0d31e6e5f8a082e843ec1c9c5e4e7fd9681b65d40085c86a1c8a0c1b3365858/part-00000",
+      "size": 50331648,
+      "sha256": "58371d824261806a0a632880a7f38649ccf52a7ad8e83337f751339a9edb90f5"
+    },
+    {
+      "path": "media/c0d31e6e5f8a082e843ec1c9c5e4e7fd9681b65d40085c86a1c8a0c1b3365858/part-00001",
+      "size": 36689898,
+      "sha256": "6d5d62c6f070e7b50210579f56f08072fbb6b6bebe485b385e0ba482cbb6fa9e"
+    }
+  ],
+  "repository": "ttklon/vid-po-krime",
+  "upload_id": "c0d31e6e5f8a082e843ec1c9c5e4e7fd9681b65d40085c86a1c8a0c1b3365858",
+  "public_backup_confirmed": true
+}
