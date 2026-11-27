@@ -234,7 +234,9 @@ class Handler(BaseHTTPRequestHandler):
             if len(data) != length:
                 raise ValueError('Неполная часть. Повторите отправку.')
             parsed = urlsplit(self.path)
-            if parsed.path == '/api/init':
+            if parsed.path == '/api/import-export':
+                self.import_export(json.loads(data))
+            elif parsed.path == '/api/init':
                 self.init_upload(json.loads(data))
             elif parsed.path == '/api/chunk':
                 q = parse_qs(parsed.query)
@@ -291,6 +293,59 @@ class Handler(BaseHTTPRequestHandler):
                 (STORE / (fid + '.part')).touch(exist_ok=False)
                 state['files'][fid] = f
                 save()
+            self.reply(200, public_file(f))
+
+    def import_export(self, obj):
+        # Never available to anonymous browser clients, even in open-upload mode.
+        if not hmac.compare_digest(self.headers.get('X-Internal-Import-Key', ''), TOKEN):
+            self.reply(403, {'error': 'Internal export import requires its own key.'})
+            return
+        name, digest, size = obj.get('name'), obj.get('sha256'), obj.get('size')
+        if obj.get('public_backup_confirmed') is not True:
+            raise ValueError('Explicit public backup consent required')
+        if not isinstance(name, str) or not re.fullmatch(r'ppnm_[A-Za-z0-9_-]{1,100}\.mp4', name):
+            raise ValueError('Invalid export filename')
+        if not isinstance(digest, str) or not re.fullmatch('[a-f0-9]{64}', digest):
+            raise ValueError('Invalid export checksum')
+        if type(size) is not int or not 0 < size <= MAX_FILE:
+            raise ValueError('Invalid export size')
+        directory = ROOT / '.cache/exports'
+        src = directory / name
+        if src.is_symlink() or src.resolve().parent != directory.resolve() or not src.is_file():
+            raise ValueError('Export must be a regular file inside .cache/exports')
+        hasher = hashlib.sha256()
+        with src.open('rb') as stream:
+            for block in iter(lambda: stream.read(CHUNK), b''):
+                hasher.update(block)
+        if src.stat().st_size != size or hasher.hexdigest() != digest:
+            raise ValueError('Export checksum or size mismatch')
+        fid = hashlib.sha256(('local-export:' + digest + ':' + name).encode()).hexdigest()
+        with file_lock(fid), LOCK:
+            f = state['files'].get(fid)
+            if f is None:
+                if OPEN_ACCESS and (len(state['files']) >= OPEN_MAX_FILES or
+                        sum(x['size'] for x in state['files'].values()) + size > OPEN_MAX_BYTES):
+                    raise ValueError('Open upload quota exceeded')
+                reserved = sum(x['size'] - x['offset'] for x in state['files'].values())
+                if shutil.disk_usage(STORE).free - 3 * reserved < 2 * size + 256 * 1024**2:
+                    raise ValueError('Not enough disk space for Git backup')
+                dest = STORE / (fid + '.part')
+                if dest.exists():
+                    if not os.path.samefile(src, dest):
+                        raise ValueError('Conflicting local export data')
+                else:
+                    os.link(src, dest)
+                f = {'id': fid, 'name': name, 'size': size, 'offset': size, 'status': 'queued',
+                     'error': '', 'sha256': digest, 'public_backup_confirmed': True,
+                     'import_method': 'verified_local_hardlink'}
+                state['files'][fid] = f
+                save()
+            if f['offset'] != size or f['name'] != name or f.get('sha256') != digest:
+                raise ValueError('Conflicting export state')
+            if f['status'] not in ('saved', 'backing_up', 'committing'):
+                f.update(status='queued', error='')
+                save()
+                enqueue(fid)
             self.reply(200, public_file(f))
 
     def chunk(self, fid, offset, digest, data):

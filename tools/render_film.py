@@ -22,12 +22,12 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
 PLAN = json.loads((ROOT / 'edit/plan.json').read_text())
-WORK = ROOT / '.cache/film-render'
+WORK = ROOT / PLAN.get('work_directory', '.cache/film-render')
 WORK.mkdir(parents=True, exist_ok=True)
 OUTPUT = ROOT / PLAN['output']
 OUTPUT.parent.mkdir(parents=True, exist_ok=True)
 FF = imageio_ffmpeg.get_ffmpeg_exe()
-FONT_DIR = Path('/usr/share/fonts/truetype/dejavu')
+TITLE_FONT = ROOT / PLAN['video'].get('title_font', 'assets/fonts/PTAstraSerif-Regular.ttf')
 GUARD = threading.Lock()
 PROGRESS = {'phase': 'starting', 'percent': 0, 'message': 'Подготовка исходников',
             'film_ready': False, 'backup': 'pending', 'started_at': time.time()}
@@ -81,25 +81,27 @@ def encoder_settings():
 
 
 def title_image(segment, path):
-    image = Image.new('RGB', (1920, 1080), '#101c28')
+    # The actual licensed PT Astra Serif, not a substitute or a generated title.
+    image = Image.new('RGB', (1920, 1080), 'black')
     draw = ImageDraw.Draw(image)
-    serif = 'DejaVuSerif.ttf'
-    size = 64 if segment.get('small_heading') else 100
-    font = ImageFont.truetype(str(FONT_DIR / serif), size)
-    sub = ImageFont.truetype(str(FONT_DIR / 'DejaVuSans.ttf'), 32)
-    label = ImageFont.truetype(str(FONT_DIR / 'DejaVuSans.ttf'), 24)
+    size = 76 if not segment.get('small_heading') else 66
     lines = segment['heading']
-    while any(draw.textbbox((0, 0), text, font=font)[2] > 1690 for text in lines):
+    font = ImageFont.truetype(str(TITLE_FONT), size)
+    while any(draw.textlength(text, font=font) > 1680 for text in lines):
         size -= 2
-        font = ImageFont.truetype(str(FONT_DIR / serif), size)
-    line_height = size * 1.28
+        font = ImageFont.truetype(str(TITLE_FONT), size)
+    line_height = size * 1.3
     y = 470 - (len(lines) - 1) * line_height / 2
-    draw.line((850, 275, 1070, 275), fill='#c8af7c', width=3)
-    draw.text((960, 320), segment['footer'], font=label, fill='#c8af7c', anchor='mm')
     for text in lines:
-        draw.text((960, y), text, font=font, fill='#f2efe9', anchor='mm')
+        draw.text((960, y), text, font=font, fill='white', anchor='mm')
         y += line_height
-    draw.text((960, 730), segment['subtitle'], font=sub, fill='#adbaca', anchor='mm')
+    subtitle = segment.get('subtitle', '')
+    subsize = 34
+    subfont = ImageFont.truetype(str(TITLE_FONT), subsize)
+    while draw.textlength(subtitle, font=subfont) > 1680:
+        subsize -= 1
+        subfont = ImageFont.truetype(str(TITLE_FONT), subsize)
+    draw.text((960, 610), subtitle, font=subfont, fill='white', anchor='mm')
     image.save(path)
 
 
@@ -133,13 +135,15 @@ def source_path(m):
 
 
 def audio_filter(segment, src):
-    key_hash = hashlib.sha256(json.dumps([segment, str(src)], sort_keys=True).encode()).hexdigest()[:16]
+    key_hash = hashlib.sha256(json.dumps([segment, str(src), PLAN['audio']], sort_keys=True).encode()).hexdigest()[:16]
     key = WORK / (segment['id'] + '-' + key_hash + '-loudness.json')
+    cleanup = PLAN['audio'].get('cleanup', '')
+    prefix = cleanup + ',' if cleanup else ''
     if key.exists():
         measurement = json.loads(key.read_text())
     else:
         log = run(['-ss', str(segment['start']), '-i', str(src), '-t', str(segment['end'] - segment['start']),
-                   '-map', '0:a:0', '-vn', '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json',
+                   '-map', '0:a:0', '-vn', '-af', prefix + 'loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json',
                    '-f', 'null', '-'], segment['id'] + '-loudness.log')
         match = re.search(r'\{\s*"input_i".*?\}', log, re.S)
         if not match:
@@ -154,7 +158,7 @@ def audio_filter(segment, src):
                 ('measured_I', 'input_i'), ('measured_TP', 'input_tp'),
                 ('measured_LRA', 'input_lra'), ('measured_thresh', 'input_thresh'), ('offset', 'target_offset')]))
     duration = segment['end'] - segment['start']
-    return filt + f',afade=t=in:d=0.015,afade=t=out:st={duration - 0.015}:d=0.015,aresample=48000'
+    return prefix + filt + f',afade=t=in:d=0.015,afade=t=out:st={duration - 0.015}:d=0.015,aresample=48000'
 
 
 def api(path, body=None, raw=False):
@@ -168,26 +172,19 @@ def api(path, body=None, raw=False):
 
 
 def publish_backup(digest):
-    fid = hashlib.sha256(('educational-export-v1:' + digest).encode()).hexdigest()
-    metadata = {'id': fid, 'name': OUTPUT.name, 'size': OUTPUT.stat().st_size, 'public_backup_confirmed': True}
-    update(backup='uploading', backup_id=fid)
-    failures = 0
-    while True:
-        try:
-            current = api('/api/init', metadata)
-            with OUTPUT.open('rb') as stream:
-                stream.seek(current['offset'])
-                while current['offset'] < metadata['size']:
-                    block = stream.read(4 * 1024**2)
-                    checksum = hashlib.sha256(block).hexdigest()
-                    current = api(f'/api/chunk?id={fid}&offset={current["offset"]}&sha256={checksum}', block, True)
-            api('/api/finish', {'id': fid})
-            break
-        except Exception:
-            failures += 1
-            if failures >= 5:
-                raise
-            time.sleep(3)
+    # Verified local hard link avoids another gigabyte-sized upload copy on disk.
+    # The internal key is local session state, never returned to the browser.
+    token = json.loads((ROOT / '.cache/video-upload/state.json').read_text())['token']
+    body = json.dumps({'name': OUTPUT.name, 'sha256': digest, 'size': OUTPUT.stat().st_size,
+                       'public_backup_confirmed': True}).encode()
+    request = Request('http://127.0.0.1:8080/api/import-export', data=body,
+                      headers={'Content-Type': 'application/json', 'X-Internal-Import-Key': token,
+                               'X-Upload-Token': token})
+    update(backup='uploading')
+    with urlopen(request, timeout=300) as response:
+        current = json.load(response)
+    fid = current['id']
+    update(backup_id=fid)
     while True:
         current = next(f for f in api('/api/files')['files'] if f['id'] == fid)
         update(backup=current['status'], backup_error=current.get('error', ''))
@@ -197,6 +194,36 @@ def publish_backup(digest):
         if current['status'] == 'error':
             return
         time.sleep(5)
+
+
+def stabilization_filter(segment, src):
+    settings = segment.get('stabilization')
+    if not settings:
+        return ''
+    signature = hashlib.sha256(json.dumps([segment, str(src)], sort_keys=True).encode()).hexdigest()[:16]
+    motion = WORK / (segment['id'] + '-' + signature + '.trf')
+    done = motion.with_suffix('.detected')
+    if not (motion.exists() and done.exists()):
+        update(phase='stabilizing', message='Анализ движения вечернего дубля; кадры не генерируются')
+        run(['-threads', '2', '-filter_threads', '2', '-ss', str(segment['start']), '-i', str(src),
+             '-t', str(segment['end'] - segment['start']), '-an', '-vf',
+             f'fps=30,vidstabdetect=result={motion}:shakiness=4:accuracy=6:stepsize=12:mincontrast=0.3',
+             '-f', 'null', '-'], segment['id'] + '-motion.log')
+        done.write_text(signature)
+    return (f'vidstabtransform=input={motion}:smoothing={settings["smoothing"]}:'
+            f'maxshift={settings["maxshift"]}:maxangle={settings["maxangle"]}:'
+            f'crop=black:relative=1:zoom={settings["zoom"]}:optzoom=0:interpol=bicubic,')
+
+
+def video_filter(segment, stabilization=''):
+    # All image adjustments happen in a single encode; no intermediate video generation.
+    vf = ('fps=30,zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,'
+          'tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv:d=error_diffusion,'
+          'format=yuv420p,' + stabilization)
+    color = segment.get('color', {})
+    if color:
+        vf += f'eq=gamma={color.get("gamma", 1)}:saturation={color.get("saturation", 1)},'
+    return vf + 'setsar=1,sidedata=delete'
 
 
 def render():
@@ -223,12 +250,10 @@ def render():
                             '-vf', 'format=yuv420p,setsar=1', '-map', '0:v:0', '-map', '1:a:0']
                 else:
                     src = sources[segment['source']]
-                    # Frame-rate conversion precedes expensive pointwise HDR conversion.
-                    vf = ('fps=30,zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,'
-                          'tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv:d=error_diffusion,'
-                          'format=yuv420p,setsar=1,sidedata=delete')
+                    vf = video_filter(segment, stabilization_filter(segment, src))
                     args = ['-ss', str(segment['start']), '-i', str(src), '-t', str(duration),
                             '-map', '0:v:0', '-map', '0:a:0', '-vf', vf, '-af', audio_filter(segment, src)]
+                update(phase='rendering', message=f'Фрагмент {index}/{len(DURATIONS)} · {label}')
                 encode(args + encoder_settings(), dest, done, duration)
                 checkpoint.write_text(signature)
             parts.append(dest)
@@ -238,10 +263,13 @@ def render():
         update(phase='joining', percent=86, message='Сборка единого MP4')
         concat = WORK / 'concat.txt'
         concat.write_text('\n'.join("file '" + str(p).replace("'", "'\\''") + "'" for p in parts))
+        joined = OUTPUT.with_name(OUTPUT.stem + '.joining.mp4')
         run(['-f', 'concat', '-safe', '0', '-i', str(concat), '-map', '0:v:0', '-map', '0:a:0', '-c', 'copy',
              '-map_metadata', '-1', '-map_chapters', '-1', '-metadata', 'title=Проверка показаний на месте — учебная монтажная версия',
              '-metadata', 'comment=Edited educational dramatization; not a continuous evidentiary recording.',
-             '-movflags', '+faststart', '-y', str(OUTPUT)], 'join.log')
+             '-movflags', '+faststart', '-y', str(joined)], 'join.log')
+        # Replace the name, never truncate an inode shared with the verified backup.
+        os.replace(joined, OUTPUT)
         update(phase='checking', percent=89, message='Полная проверка итогового видео и звука')
         run(['-v', 'error', '-xerror', '-threads', '2', '-i', str(OUTPUT), '-map', '0:v:0', '-map', '0:a:0', '-f', 'null', '-'], 'final-decode.log')
         with av.open(str(OUTPUT)) as c:
@@ -297,7 +325,7 @@ class Handler(BaseHTTPRequestHandler):
             with GUARD:
                 payload = dict(PROGRESS)
             revision = ROOT / 'edit/revision.json'
-            if revision.exists():
+            if revision.exists() and json.loads(revision.read_text()).get('status') != 'resolved':
                 payload['revision_notice'] = json.loads(revision.read_text())['message']
             body = json.dumps(payload, ensure_ascii=False).encode()
             self.response(body, 'application/json; charset=utf-8')
@@ -338,7 +366,7 @@ class Handler(BaseHTTPRequestHandler):
         if header:
             self.send_header('Content-Range', f'bytes {start}-{end}/{size}')
         if parse_qs(urlsplit(self.path).query).get('download'):
-            self.send_header('Content-Disposition', 'attachment; filename="ppnm_1080p_educational.mp4"')
+            self.send_header('Content-Disposition', 'attachment; filename="' + OUTPUT.name + '"')
         self.end_headers()
         try:
             with OUTPUT.open('rb') as stream:
@@ -358,8 +386,10 @@ if __name__ == '__main__':
     if os.environ.get('FILM_SERVE_ONLY') == '1':
         if (WORK / 'status.json').exists():
             PROGRESS.update(json.loads((WORK / 'status.json').read_text()))
-    elif (ROOT / 'edit/revision.json').exists():
-        update(phase='revision_needed', message='Требуется вечерний дубль. Повторный экспорт не запущен.')
+    elif (ROOT / 'edit/revision.json').exists() and (
+            json.loads((ROOT / 'edit/revision.json').read_text()).get('status') != 'resolved' or
+            PLAN.get('status') != 'revision_2_ready_to_render'):
+        update(phase='revision_needed', message='Подготовка второй версии не завершена; экспорт заблокирован.')
     else:
         threading.Thread(target=render, daemon=True).start()
     print('Educational film preview: port ' + os.environ.get('FILM_PORT', '8081'), flush=True)

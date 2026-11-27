@@ -19,13 +19,15 @@ class FilmTests(unittest.TestCase):
         cls.m = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(cls.m)
 
-    def test_edit_covers_seven_sources_and_keeps_mannequin(self):
+    def test_edit_replaces_daytime_and_keeps_full_evening(self):
         sources = [s for s in self.m.PLAN['segments'] if s['type'] == 'source']
         self.assertEqual(len(set(s['source'] for s in sources)), 7)
-        location = next(s for s in sources if s['source'] == 'IMG_4682.MOV')
-        self.assertLessEqual(location['start'], 264)
-        self.assertGreaterEqual(location['end'], 294)
-        self.assertAlmostEqual(self.m.TOTAL, 833.4)
+        self.assertNotIn('IMG_4682.MOV', {s['source'] for s in sources})
+        location = next(s for s in sources if s['source'] == 'IMG_4701.MOV')
+        self.assertEqual(location['start'], 0)
+        self.assertEqual(location['end'], 575)
+        self.assertAlmostEqual(self.m.TOTAL, 1111.1)
+        self.assertEqual(self.m.OUTPUT.name, 'ppnm_v2_1080p_educational.mp4')
         for s in sources:
             self.assertLess(s['start'], s['end'])
             for key in ('start', 'end'):
@@ -38,6 +40,11 @@ class FilmTests(unittest.TestCase):
             self.m.title_image(self.m.PLAN['segments'][0], dest)
             with Image.open(dest) as image:
                 self.assertEqual(image.size, (1920, 1080))
+                self.assertEqual(image.getpixel((0, 0)), (0, 0, 0))
+                # Antialiasing may produce grays, but never colored decoration.
+                self.assertTrue(all(r == g == b for r, g, b in image.getdata()))
+        from PIL import ImageFont
+        self.assertEqual(ImageFont.truetype(str(self.m.TITLE_FONT), 30).getname()[0], 'PT Astra Serif')
 
     def test_loudnorm_allows_non_numeric_metadata(self):
         m = self.m
@@ -48,6 +55,16 @@ class FilmTests(unittest.TestCase):
             result = m.audio_filter(segment, Path('test.mov'))
             self.assertIn('measured_I=-20.1', result)
             self.assertNotIn('normalization_type', result)
+            self.assertTrue(result.startswith('highpass=f=65,afftdn='))
+            self.assertIn('afftdn=', m.run.call_args.args[0][m.run.call_args.args[0].index('-af') + 1])
+
+    def test_stabilization_optional_and_color_conservative(self):
+        self.assertEqual(self.m.stabilization_filter({}, Path('unused')), '')
+        result = self.m.video_filter({'color': {'gamma': 1.015, 'saturation': 0.98}}, 'vidstabtransform=test,')
+        self.assertIn('fps=30', result)
+        self.assertIn('vidstabtransform=test', result)
+        self.assertIn('gamma=1.015', result)
+        self.assertIn('tonemap=hable', result)
 
     def test_stream_ranges_and_download(self):
         m = self.m

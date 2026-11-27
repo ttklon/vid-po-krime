@@ -81,6 +81,55 @@ class UploadTests(unittest.TestCase):
             self.assertEqual(self.init()[0], 400)
             self.assertFalse(self.m.state['files'])
 
+    def export_fixture(self, name='ppnm_v2_test.mp4', data=b'export content'):
+        directory = self.m.ROOT / '.cache/exports'
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / name
+        path.write_bytes(data)
+        obj = {'name': name, 'sha256': hashlib.sha256(data).hexdigest(),
+               'size': len(data), 'public_backup_confirmed': True}
+        return path, obj
+
+    def import_request(self, obj):
+        return self.request('/api/import-export', obj,
+                            headers={'X-Upload-Token': self.m.TOKEN,
+                                     'X-Internal-Import-Key': self.m.TOKEN})
+
+    def test_local_export_requires_internal_key_even_in_open_mode(self):
+        with patch.object(self.m, 'OPEN_ACCESS', True):
+            _, obj = self.export_fixture()
+            self.assertEqual(self.request('/api/import-export', obj, auth=False)[0], 403)
+            self.assertFalse(self.m.state['files'])
+
+    def test_local_export_verified_link_and_idempotence(self):
+        import os
+        path, obj = self.export_fixture()
+        code, saved = self.import_request(obj)
+        self.assertEqual(code, 200)
+        dest = self.m.STORE / (saved['id'] + '.part')
+        self.assertTrue(os.path.samefile(path, dest))
+        self.assertEqual(saved['offset'], obj['size'])
+        self.assertEqual(saved['status'], 'queued')
+        self.assertEqual(self.import_request(obj)[1]['id'], saved['id'])
+        self.assertEqual(len(self.m.state['files']), 1)
+        self.assertEqual(self.m.JOBS.qsize(), 1)
+
+    def test_local_export_rejects_invalid_checksum_name_and_symlink(self):
+        path, obj = self.export_fixture()
+        self.assertEqual(self.import_request({**obj, 'sha256': '0' * 64})[0], 400)
+        self.assertEqual(self.import_request({**obj, 'name': '../' + path.name})[0], 400)
+        self.assertEqual(self.import_request({**obj, 'public_backup_confirmed': False})[0], 400)
+        link = path.with_name('ppnm_link.mp4')
+        link.symlink_to(path)
+        self.assertEqual(self.import_request({**obj, 'name': link.name})[0], 400)
+        self.assertFalse(self.m.state['files'])
+
+    def test_local_export_obeys_open_quota(self):
+        _, obj = self.export_fixture()
+        with patch.object(self.m, 'OPEN_ACCESS', True), patch.object(self.m, 'OPEN_MAX_BYTES', 1):
+            self.assertEqual(self.import_request(obj)[0], 400)
+        self.assertFalse(self.m.state['files'])
+
     def test_proxy_safe_upload_header(self):
         self.assertEqual(self.request('/api/files', headers={'X-Upload-Token': self.m.TOKEN})[0], 200)
         self.assertEqual(self.request('/api/files', headers={'X-Upload-Token': 'wrong'})[0], 401)
