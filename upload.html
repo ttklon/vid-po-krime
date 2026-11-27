@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Загрузка видео · Крым</title>
+<style>
+:root{font-family:Inter,system-ui,sans-serif;color:#eaf3fa;background:#0b131b;color-scheme:dark}*{box-sizing:border-box}body{margin:0}main{max-width:1060px;margin:auto;padding:48px 24px}header{display:flex;justify-content:space-between;gap:20px;align-items:center}.eyebrow{color:#62d7bb;font-size:12px;letter-spacing:2px;text-transform:uppercase}h1{font-size:clamp(30px,5vw,48px);letter-spacing:-1.6px;margin:12px 0}p{color:#a3b4c3;line-height:1.6}.badge{border:1px solid #2e4b46;border-radius:30px;color:#7de3c6;padding:9px 15px;font-size:12px;white-space:nowrap}.notice{background:#16222e;border:1px solid #2c3e4f;padding:16px 20px;border-radius:12px;font-size:14px;margin:28px 0;line-height:1.65;color:#b9c9d7}.notice strong{color:#e7eff6}.drop{padding:38px 20px;text-align:center;border:1px dashed #476779;border-radius:16px;background:#101f29;transition:.2s}.drop.over{border-color:#64e0bd;background:#173c39}.icon{font-size:36px;color:#78e3c5}.drop h2{font-size:21px;margin:14px 0 4px}button,.button{border:0;background:#7be1c5;color:#09251e;font:600 14px system-ui;padding:12px 20px;border-radius:8px;cursor:pointer;display:inline-block}button:hover,.button:hover{filter:brightness(1.1)}button.secondary{background:#253644;color:#d6e3ee;margin-left:8px}button:disabled{opacity:.45;cursor:default}.small{font-size:12px;color:#8fa5b5}.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:24px 0}.stat{background:#121f2a;border:1px solid #243441;padding:18px;border-radius:12px}.stat b{display:block;font-size:24px;margin-bottom:4px}.section{display:flex;justify-content:space-between;align-items:center;margin-top:30px}h2{font-size:18px}.file{background:#121f2a;border:1px solid #263947;border-radius:12px;padding:18px;margin:12px 0}.row{display:flex;align-items:center;justify-content:space-between;gap:16px}.filename{font-weight:600;overflow-wrap:anywhere}.status{font-size:12px;color:#9cb9cf;text-align:right;flex-shrink:0}.saved{color:#7be1c5}.error{color:#ffb292}.track{height:5px;background:#243643;border-radius:10px;margin:14px 0 9px;overflow:hidden}.bar{height:100%;background:#6fdcbe;transition:width .2s}.details{font-size:12px;line-height:1.5;color:#8da6b9;overflow-wrap:anywhere}.errorbox{color:#ffb292;white-space:pre-wrap;margin-top:12px;font-size:12px;overflow-wrap:anywhere}a{color:#7cdec7}footer{font-size:12px;color:#708b9e;margin-top:32px;line-height:1.8}#connection{font-size:13px;color:#f4bc84;min-height:20px}input[type=file]{position:absolute;left:-10000px}@media(max-width:600px){main{padding:26px 16px}header{display:block}.badge{display:inline-block;margin-top:10px}.summary{gap:8px}.stat{padding:12px}.stat b{font-size:20px}.row{align-items:flex-start}.status{max-width:120px;white-space:normal}.notice{font-size:13px}}
+</style></head><body><main>
+<header><div><div class="eyebrow">Крым / Медиатека</div><h1>Видео — в сохранности.</h1><p>Загрузите все ролики. Мы примем их частями<br>и по одному сохраним в GitHub.</p></div><span class="badge">● SHA-256 · проверка каждой части</span></header>
+<div class="notice"><strong>Внимание: видео будут общедоступны.</strong> Репозиторий GitHub публичный. После приёма каждого ролика сервер сохранит его в коммитах частями по 48 МиБ — без потери качества. Зелёный статус появится только после успешного push всех частей и манифеста. Для сборки исходного видео предусмотрена команда.<br><label style="display:block;margin-top:12px;color:#f5cf9b"><input type="checkbox" id="consent"> Я согласен на публикацию этих видео в публичном репозитории GitHub.</label></div>
+<div id="connection" role="status"></div>
+<section class="drop" id="drop"><div class="icon">↥</div><h2>Перетащите сюда ваши видео</h2><p>Можно выбрать все 11 сразу · суммарно 2 ГБ и больше</p><label class="button" for="picker">Выбрать видео</label><input id="picker" type="file" accept="video/*,.mkv,.mov,.mts,.m2ts,.avi,.webm" multiple><p class="small">Каждый файл — меньше 2 ГиБ. Страницу держите открытой до завершения приёма.</p></section>
+<div class="summary"><div class="stat"><b id="count">0</b><span class="small">файлов в списке</span></div><div class="stat"><b id="bytes">0 Б</b><span class="small">принято сервером</span></div><div class="stat"><b id="saved">0</b><span class="small">сохранено в GitHub</span></div></div>
+<div class="section"><h2>Ваши файлы</h2><button id="pause" class="secondary" disabled>Пауза отправки</button></div><div id="files"><p class="small">Пока ничего не загружено.</p></div>
+<footer id="repo"></footer><footer>При обрыве или перезагрузке выберите те же исходные файлы снова — передача продолжится с подтверждённой части. Не удаляйте оригиналы, пока каждый ролик не получит зелёный статус. Ключ доступа находится в адресе этой страницы: не передавайте ссылку посторонним. Видео станут общедоступными; удаление из последнего коммита не удалит их из истории Git.</footer>
+</main><script>
+'use strict';
+const token=location.hash.slice(1), chunkSize=4*1024*1024;
+const remote=new Map(), local=new Map(), waiting=[];
+let running=0, paused=false, refreshing=false;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sizes=n=>n>=1024**3?(n/1024**3).toFixed(2)+' ГиБ':n>=1024**2?(n/1024**2).toFixed(1)+' МиБ':n>=1024?(n/1024).toFixed(0)+' КиБ':n+' Б';
+const labels={receiving:'Приём частями',queued:'Ожидает отправки в GitHub',backing_up:'Отправка в GitHub…',committing:'Коммит и push…',saved:'✓ Сохранено в GitHub',error:'Нужен повтор сохранения'};
+async function api(path,body,raw=false){
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),150000);
+ try{
+ const res=await fetch(path,{method:body===undefined?'GET':'POST',headers:{Authorization:'Bearer '+token,...(body===undefined?{}:{'Content-Type':raw?'application/octet-stream':'application/json'})},body:body===undefined?undefined:raw?body:JSON.stringify(body),signal:controller.signal});
+ const obj=await res.json();if(!res.ok){const e=new Error(obj.error||'HTTP '+res.status);e.status=res.status;throw e;}return obj;
+ }finally{clearTimeout(timer);}
+}
+function draw(){
+ const all=[...remote.values()];let total=0,saved=0;
+ $('files').innerHTML=all.map(f=>{
+ total+=f.offset;saved+=f.status==='saved'?1:0;
+ const l=local.get(f.id),pct=Math.min(100,f.offset/f.size*100),err=l?.error||f.error;
+ let status=labels[f.status]||f.status;
+ if(f.status==='receiving'&&!l?.active)status=paused?'Приём на паузе':l?.queued?'Ожидает приёма':'Выберите этот файл для продолжения';
+ if(l?.error)status='Передача приостановлена';
+ return `<article class="file"><div class="row"><div class="filename">${esc(f.name)}</div><div class="status ${f.status==='saved'?'saved':err?'error':''}">${esc(status)}</div></div><div class="track"><div class="bar" style="width:${pct}%"></div></div><div class="row"><span class="details">${sizes(f.offset)} / ${sizes(f.size)} · ${pct.toFixed(1)}% принято</span>${f.status==='error'?`<button class="secondary" data-retry="${f.id}">Повторить сохранение</button>`:''}</div>${err?`<div class="errorbox">${esc(err)}</div>`:''}${f.parts_pushed?`<div class="details">Отправлено в GitHub частей: ${f.parts_pushed}</div>`:''}${f.sha256?`<div class="details">SHA-256: ${esc(f.sha256)}</div>`:''}${f.status==='saved'?`<div class="details">Части и манифест в GitHub · коммит ${esc(f.commit?.slice(0,8))} отправлен в ветку</div>`:''}</article>`;
+ }).join('')||'<p class="small">Пока ничего не загружено.</p>';
+ $('count').textContent=all.length;$('bytes').textContent=sizes(total);$('saved').textContent=saved;
+ $('pause').disabled=!running&&!waiting.length;
+ $('pause').textContent=paused?'Продолжить отправку':'Пауза отправки';
+}
+async function refresh(){if(refreshing)return;refreshing=true;try{const data=await api('/api/files');for(const f of data.files)remote.set(f.id,f);$('connection').textContent='';$('repo').textContent=`${data.repo} · ${data.branch} · свободно ${sizes(data.free)}`;draw();}catch(e){$('connection').textContent='Нет связи с сервером: '+e.message;}finally{refreshing=false;}}
+async function sha(data){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',data))].map(x=>x.toString(16).padStart(2,'0')).join('');}
+async function identity(file){const first=await file.slice(0,chunkSize).arrayBuffer(),last=await file.slice(Math.max(0,file.size-chunkSize)).arrayBuffer();const meta=new TextEncoder().encode(JSON.stringify([file.name,file.size,file.lastModified]));return sha(await new Blob([meta,first,last]).arrayBuffer());}
+async function choose(files){
+ if(!$('consent').checked){alert('Перед загрузкой подтвердите согласие на публичное сохранение видео. Если видео приватные, не загружайте их.');return;}
+ $('connection').textContent='Проверяем выбранные файлы…';
+ for(const file of files){try{
+ if(!file.size||file.size>=2*1024**3){alert(file.name+': файл должен быть непустым и меньше 2 ГиБ.');continue;}
+ const id=await identity(file),old=local.get(id);if(old?.active||old?.queued)continue;
+ const f=await api('/api/init',{id,name:file.name,size:file.size,public_backup_confirmed:true});remote.set(id,f);
+ if(['receiving'].includes(f.status)){local.set(id,{file,active:false,queued:true,error:''});waiting.push(id);}
+ else if(f.offset===f.size&&f.status!=='saved')await api('/api/finish',{id});
+ draw();pump();
+ }catch(e){$('connection').textContent=e.message;}}
+ $('picker').value='';refresh();
+}
+async function send(id){const l=local.get(id);l.active=true;l.queued=false;l.error='';let failures=0;
+ try{
+ while(true){
+ if(paused){l.queued=true;waiting.unshift(id);return;}
+ let f=remote.get(id);
+ try{
+ // Synchronize offset, including after a lost acknowledgement or a repeated selection.
+ if(failures||!f)f=await api('/api/init',{id,name:l.file.name,size:l.file.size,public_backup_confirmed:true});
+ remote.set(id,f);
+ if(f.offset>=f.size){remote.set(id,await api('/api/finish',{id}));break;}
+ const block=await l.file.slice(f.offset,f.offset+chunkSize).arrayBuffer(),digest=await sha(block);
+ const result=await api(`/api/chunk?id=${id}&offset=${f.offset}&sha256=${digest}`,block,true);
+ remote.set(id,{...f,offset:result.offset});failures=0;draw();
+ }catch(e){if(e.status===401||e.status===400||++failures>8)throw e;
+ $('connection').textContent='Связь прервалась. Повторяем часть, попытка '+failures+' из 8…';
+ await new Promise(r=>setTimeout(r,Math.min(1000*2**failures,15000)));
+ }
+ }
+ }catch(e){l.error=e.message+' — выберите исходный файл повторно для продолжения.';}
+ finally{l.active=false;draw();}
+}
+function pump(){while(!paused&&running<2&&waiting.length){const id=waiting.shift();running++;send(id).finally(()=>{running--;draw();pump();refresh();});}draw();}
+$('picker').addEventListener('change',e=>choose([...e.target.files]));
+const drop=$('drop');for(const event of ['dragenter','dragover'])drop.addEventListener(event,e=>{e.preventDefault();drop.classList.add('over');});for(const event of ['dragleave','drop'])drop.addEventListener(event,e=>{e.preventDefault();drop.classList.remove('over');});drop.addEventListener('drop',e=>choose([...e.dataTransfer.files]));
+$('pause').onclick=()=>{paused=!paused;if(!paused)pump();draw();};
+$('files').onclick=async e=>{const id=e.target.dataset.retry;if(!id)return;try{remote.set(id,await api('/api/retry',{id}));draw();}catch(err){$('connection').textContent=err.message;}};
+window.addEventListener('beforeunload',e=>{if(running||waiting.length){e.preventDefault();e.returnValue='';}});
+if(!token)$('connection').textContent='Откройте полную ссылку с ключом доступа, которую выдал агент.';else{refresh();setInterval(refresh,3000);}
+</script></body></html>
