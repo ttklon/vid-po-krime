@@ -1,0 +1,80 @@
+{
+  "original_name": "ppnm_1080p_educational.mp4",
+  "size": 700349933,
+  "sha256": "531278038aabf48b40b923c0379f8dd5e8fc25c7fe5dc479e5871aa1dbd36da9",
+  "parts": [
+    {
+      "path": "media/845ead2fdc3571c8a6df4402970c8049988a6b413c0bda9673d4f35863fc6bd8/part-00000",
+      "size": 50331648,
+      "sha256": "143a138d3e4cc07b9897f72cfb1f255eaf63646b7031f89c6a41b9440ea34168"
+    },
+    {
+      "path": "media/845ead2fdc3571c8a6df4402970c8049988a6b413c0bda9673d4f35863fc6bd8/part-00001",
+      "size": 50331648,
+      "sha256": "a9cd984536c203315c1480b04d2eee84e5aab7cff6b34016a4274cc52ccc57fc"
+    },
+    {
+      "path": "media/845ead2fdc3571c8a6df4402970c8049988a6b413c0bda9673d4f35863fc6bd8/part-00002",
+      "size": 50331648,
+      "sha256": "bda798e59e04f6b9462add93132d647e9f6be8572804258cc67f20626de3ff3b"
+    },
+    {
+      "path": "media/845ead2fdc3571c8a6df4402970c8049988a6b413c0bda9673d4f35863fc6bd8/part-00003",
+      "size": 50331648,
+      "sha256": "44c0fbd3659476ab5a823f6684d468e0da5a3c36846902b74c27234e804e9c1b"
+    },
+    {
+      "path": "media/845ead2fdc3571c8a6df4402970c8049988a6b413c0bda9673d4f35863fc6bd8/part-00004",
+      "size": 50331648,
+      "sha256": "728e3f4fb571e33203e2ae67cd6012a4785f2e786002336c48369a0c6d52ab21"
+    },
+    {
+      "path": "media/845ead2fdc3571c8a6df4402970c8049988a6b413c0bda9673d4f35863fc6bd8/part-00005",
+      "size": 50331648,
+      "sha256": "5d9ac141f369a6964cbfae5bced785da5e4144220945a300a361615e7c9171f5"
+    },
+    {
+      "path": "media/845ead2fdc3571c8a6df4402970c8049988a6b413c0bda9673d4f35863fc6bd8/part-00006",
+      "size": 50331648,
+      "sha256": "a28ce856cb5c50f5c5c0ab53977957ef9193d8b706304a3e0356b7848e614628"
+    },
+    {
+      "path": "media/845ead2fdc3571c8a6df4402970c8049988a6b413c0bda9673d4f35863fc6bd8/part-00007",
+      "size": 50331648,
+      "sha256": "02cc255d694b4e10071a37270e952860c027e7f4a0f04c88bc49e52b29c6561a"
+    },
+    {
+      "path": "media/845ead2fdc3571c8a6df4402970c8049988a6b413c0bda9673d4f35863fc6bd8/part-00008",
+      "size": 50331648,
+      "sha256": "db11439c196615146e31d225b401659aed0366e7831dd430ad6598d67b929531"
+    },
+    {
+      "path": "media/845ead2fdc3571c8a6df4402970c8049988a6b413c0bda9673d4f35863fc6bd8/part-00009",
+      "size": 50331648,
+      "sha256": "7d2a18a532f3509576e5408dc0a471fb912d80159241299b9bcfa7705a068d20"
+    },
+    {
+      "path": "media/845ead2fdc3571c8a6df4402970c8049988a6b413c0bda9673d4f35863fc6bd8/part-00010",
+      "size": 50331648,
+      "sha256": "279406649d70093a2dc673d6abf8abcc5c2e8b8d0eb3b27aa74b0b82f43c5ddf"
+    },
+    {
+      "path": "media/845ead2fdc3571c8a6df4402970c8049988a6b413c0bda9673d4f35863fc6bd8/part-00011",
+      "size": 50331648,
+      "sha256": "f4cd64843bcddb7b1df62c9973e769c91cfb5a3513568fb7794a7ab79319f2ec"
+    },
+    {
+      "path": "media/845ead2fdc3571c8a6df4402970c8049988a6b413c0bda9673d4f35863fc6bd8/part-00012",
+      "size": 50331648,
+      "sha256": "791bf04563955077471ad1e869ae802d951e66e01a1226a8edea58620cdeb791"
+    },
+    {
+      "path": "media/845ead2fdc3571c8a6df4402970c8049988a6b413c0bda9673d4f35863fc6bd8/part-00013",
+      "size": 46038509,
+      "sha256": "9002cd7e0c0109bdcab192b4a09f6000fefb1d7f534e8db51cf7ea6db9a22f5a"
+    }
+  ],
+  "repository": "ttklon/vid-po-krime",
+  "upload_id": "845ead2fdc3571c8a6df4402970c8049988a6b413c0bda9673d4f35863fc6bd8",
+  "public_backup_confirmed": true
+}
