@@ -1,0 +1,15 @@
+{
+  "original_name": "IMG_4690.MOV",
+  "size": 44491759,
+  "sha256": "200dc3c3f13c8a129256a3bfb1e85cb33fd8ca9ae4faf0a9f051a346e621445d",
+  "parts": [
+    {
+      "path": "media/8aab79aa0c106f5ff3491770b1bf42c71ec3d5c1dd725d6731cfb1ae15b07b69/part-00000",
+      "size": 44491759,
+      "sha256": "200dc3c3f13c8a129256a3bfb1e85cb33fd8ca9ae4faf0a9f051a346e621445d"
+    }
+  ],
+  "repository": "ttklon/vid-po-krime",
+  "upload_id": "8aab79aa0c106f5ff3491770b1bf42c71ec3d5c1dd725d6731cfb1ae15b07b69",
+  "public_backup_confirmed": true
+}
