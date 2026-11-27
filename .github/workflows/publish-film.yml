@@ -1,0 +1,50 @@
+name: Publish finished film
+
+on:
+  push:
+    branches:
+      - arena/bbf0db6c-vid-po-krime
+    paths:
+      - .github/workflows/publish-film.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-ppnm-v2
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out verified export parts only
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /restore_video.py
+            /videos/ae580cab5f1250c4ba9b0e3c45600dad8a2f93872b4a68513ac7df9cb1ddd832.json
+            /media/ae580cab5f1250c4ba9b0e3c45600dad8a2f93872b4a68513ac7df9cb1ddd832/
+      - name: Restore MP4 and verify all checksums
+        run: python3 restore_video.py videos/ae580cab5f1250c4ba9b0e3c45600dad8a2f93872b4a68513ac7df9cb1ddd832.json --output release-export
+      - name: Upload single MP4 and publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EXPORT_COMMIT: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag=ppnm-v2-2026-11-27
+          file=release-export/ppnm_v2_1080p_educational.mp4
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --target "$EXPORT_COMMIT" --draft \
+              --title "ППНМ — готовое видео, версия 2" \
+              --notes "Учебная постановка. Монтажная версия 2. MP4, 1920×1080, 18:31. Размер: 989561734 байт. SHA-256: 95f0355be6e878065bd91ad178716c1db0e899b420adab6d80e83bec1f07e3f0."
+          fi
+          gh release upload "$tag" "$file" --clobber
+          gh release edit "$tag" --draft=false
+          gh release view "$tag" --json assets --jq '.assets[] | {name, size, url}'
