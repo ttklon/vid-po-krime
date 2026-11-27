@@ -1,0 +1,50 @@
+{
+  "original_name": "IMG_4698.MOV",
+  "size": 390614207,
+  "sha256": "23759a66dd75c8a778457ef58cb9c6a55862adf7d708883ac0c0563a6babde5f",
+  "parts": [
+    {
+      "path": "media/4b756cf509db84b974b1ecdc92fc1d61734a65b3440bf984f022726124a84f2b/part-00000",
+      "size": 50331648,
+      "sha256": "80c2a95dacf967323f707ed9c44fb0f945f78e3b1a584ec9667c99152da773a1"
+    },
+    {
+      "path": "media/4b756cf509db84b974b1ecdc92fc1d61734a65b3440bf984f022726124a84f2b/part-00001",
+      "size": 50331648,
+      "sha256": "a2c7eafc573a6f815ed838e700735576766ff17c63cb88aa07b3e8d477449c82"
+    },
+    {
+      "path": "media/4b756cf509db84b974b1ecdc92fc1d61734a65b3440bf984f022726124a84f2b/part-00002",
+      "size": 50331648,
+      "sha256": "d29d7c28e699da8fe6bdc84624d0369b03e4381159e2d46d06edbff1e88b9fdf"
+    },
+    {
+      "path": "media/4b756cf509db84b974b1ecdc92fc1d61734a65b3440bf984f022726124a84f2b/part-00003",
+      "size": 50331648,
+      "sha256": "f15dafbdca23103203ca9de3e4ba828bdd2c7e19551a89540aec13f8bda7556f"
+    },
+    {
+      "path": "media/4b756cf509db84b974b1ecdc92fc1d61734a65b3440bf984f022726124a84f2b/part-00004",
+      "size": 50331648,
+      "sha256": "83873ff18a6bf75ba031b8a5e1ac1b080c9b9f5bd8ef24718e20344dbcb064f9"
+    },
+    {
+      "path": "media/4b756cf509db84b974b1ecdc92fc1d61734a65b3440bf984f022726124a84f2b/part-00005",
+      "size": 50331648,
+      "sha256": "815ee1b4a4fd89783579b9fb0574b4ac881cf6a3781147de89a88e1c130ffe4a"
+    },
+    {
+      "path": "media/4b756cf509db84b974b1ecdc92fc1d61734a65b3440bf984f022726124a84f2b/part-00006",
+      "size": 50331648,
+      "sha256": "d9a5598288ff1d1fc4bc93937a33d09d3a81fcdaed5bdd9cdb387c5b76b51595"
+    },
+    {
+      "path": "media/4b756cf509db84b974b1ecdc92fc1d61734a65b3440bf984f022726124a84f2b/part-00007",
+      "size": 38292671,
+      "sha256": "d8137c9347fbf538cbbe17b9fa5e2f920466ef87babec7d3c3dcea1af706b4a8"
+    }
+  ],
+  "repository": "ttklon/vid-po-krime",
+  "upload_id": "4b756cf509db84b974b1ecdc92fc1d61734a65b3440bf984f022726124a84f2b",
+  "public_backup_confirmed": true
+}
